@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ~/.zima-host/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - zima-network
+    restart: unless-stopped
+
+  zima-host:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ~/.zima-host:/root/.zima-host
+    networks:
+      - zima-network
+    depends_on:
+      - caddy
+    restart: unless-stopped
+
+networks:
+  zima-network:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
