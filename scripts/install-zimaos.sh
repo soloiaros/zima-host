@@ -36,8 +36,15 @@ CADDY_DATA_DIR="${DATA_ROOT}/caddy_data"
 CADDY_CONFIG_DIR="${DATA_ROOT}/caddy_config"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# ZimaOS uses an immutable/read-only root filesystem (/root is read-only).
+# Route Docker CLI config, cache, and temporary files to writable /DATA partition.
+export DOCKER_CONFIG="${DATA_ROOT}/.docker"
+export XDG_CONFIG_HOME="${DATA_ROOT}/.config"
+export XDG_CACHE_HOME="${DATA_ROOT}/.cache"
+export TMPDIR="/tmp"
+
 echo -e "📂 Target Data Directory: ${BLUE}${DATA_ROOT}${NC}"
-mkdir -p "${APP_DATA_DIR}/projects" "${APP_DATA_DIR}/templates" "${CADDY_DATA_DIR}" "${CADDY_CONFIG_DIR}"
+mkdir -p "${APP_DATA_DIR}/projects" "${APP_DATA_DIR}/templates" "${CADDY_DATA_DIR}" "${CADDY_CONFIG_DIR}" "${DOCKER_CONFIG}" "${XDG_CONFIG_HOME}" "${XDG_CACHE_HOME}"
 
 # 2. Check Docker
 if ! command -v docker &> /dev/null; then
