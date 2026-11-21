@@ -55,7 +55,7 @@ services:
 networks:
   zima-network:
     name: zima-network
-    driver: bridge
+    external: true
 
 volumes:
   caddy_data:

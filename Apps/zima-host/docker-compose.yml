@@ -65,7 +65,7 @@ services:
 networks:
   zima-network:
     name: zima-network
-    driver: bridge
+    external: true
 
 x-casaos:
   architectures:
