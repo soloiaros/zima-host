@@ -3,7 +3,8 @@ import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { config } from '../config.js';
 import { getDb } from '../database.js';
-import type { Domain } from '@zima-host/shared';
+import { AppError } from '../middleware/error.js';
+import { slugify, type Domain } from '@zima-host/shared';
 
 const execAsync = promisify(exec);
 
@@ -40,7 +41,8 @@ export async function generateCaddyfile(): Promise<string> {
   }
 
   const blocks = rows.map((row) => {
-    const containerHost = `zima-${row.name}`;
+    const slug = slugify(row.name);
+    const containerHost = `zima-${slug}`;
     const upstream = `${containerHost}:${row.port}`;
     const scheme = row.ssl_enabled ? 'https' : 'http';
     const domainDirective = row.ssl_enabled
@@ -108,6 +110,11 @@ export function getAllDomains(): Domain[] {
  */
 export function addDomain(id: string, projectId: string, domain: string, sslEnabled: boolean): Domain {
   const db = getDb();
+  const existing = db.prepare('SELECT id FROM domains WHERE domain = ?').get(domain);
+  if (existing) {
+    throw new AppError(409, `Domain "${domain}" is already registered`);
+  }
+
   db.prepare(
     'INSERT INTO domains (id, project_id, domain, ssl_enabled) VALUES (?, ?, ?, ?)',
   ).run(id, projectId, domain, sslEnabled ? 1 : 0);

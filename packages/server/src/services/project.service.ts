@@ -71,6 +71,16 @@ export function getProjectById(id: string): Project | undefined {
  */
 export async function createProject(req: CreateProjectRequest): Promise<Project> {
   const db = getDb();
+  const trimmedName = req.name.trim();
+
+  // Ensure unique project name
+  const existing = db
+    .prepare('SELECT id FROM projects WHERE LOWER(name) = LOWER(?)')
+    .get(trimmedName);
+  if (existing) {
+    throw new AppError(409, `A project named "${trimmedName}" already exists`);
+  }
+
   const id = nanoid();
   const port = assignPort();
   const projectDir = path.join(config.projectsDir, id);
@@ -78,13 +88,34 @@ export async function createProject(req: CreateProjectRequest): Promise<Project>
   fs.mkdirSync(projectDir, { recursive: true });
 
   // Clone git repo if source_type is 'git'
+  let branch = req.branch?.trim() || null;
   if (req.sourceType === 'git') {
     if (!req.sourceUrl) {
+      fs.rmSync(projectDir, { recursive: true, force: true });
       throw new AppError(400, 'sourceUrl is required for git projects');
     }
-    const git = simpleGit();
-    const branch = req.branch || config.defaults.branch;
-    await git.clone(req.sourceUrl, projectDir, ['--branch', branch, '--single-branch']);
+    try {
+      const git = simpleGit();
+      const cloneArgs: string[] = ['--single-branch'];
+      if (branch) {
+        cloneArgs.push('--branch', branch);
+      }
+      await git.clone(req.sourceUrl.trim(), projectDir, cloneArgs);
+
+      // If branch wasn't explicitly supplied, detect the default branch checked out
+      if (!branch) {
+        try {
+          const repoGit = simpleGit(projectDir);
+          const branchSummary = await repoGit.branch();
+          branch = branchSummary.current || config.defaults.branch;
+        } catch {
+          branch = config.defaults.branch;
+        }
+      }
+    } catch (err: any) {
+      fs.rmSync(projectDir, { recursive: true, force: true });
+      throw new AppError(400, `Git clone failed: ${err.message}`);
+    }
   }
 
   db.prepare(
@@ -92,11 +123,11 @@ export async function createProject(req: CreateProjectRequest): Promise<Project>
      VALUES (?, ?, ?, ?, ?, ?, ?, 'stopped', ?)`,
   ).run(
     id,
-    req.name,
+    trimmedName,
     req.type,
     req.sourceType,
-    req.sourceUrl || null,
-    req.branch || config.defaults.branch,
+    req.sourceUrl?.trim() || null,
+    branch || config.defaults.branch,
     port,
     JSON.stringify(req.envVars || {}),
   );
@@ -156,7 +187,8 @@ export async function deleteProject(id: string): Promise<void> {
   }
 
   // Remove Docker image
-  await dockerService.removeImage(`zima-${project.name}:latest`).catch(() => {});
+  const slug = dockerService.slugify(project.name);
+  await dockerService.removeImage(`zima-${slug}:latest`).catch(() => {});
 
   // Remove project files
   const projectDir = path.join(config.projectsDir, id);
@@ -186,11 +218,15 @@ export async function deployProject(id: string): Promise<Project> {
   db.prepare("UPDATE projects SET status = 'building', updated_at = datetime('now') WHERE id = ?").run(id);
 
   try {
-    // If git, do a pull to get latest
+    // If git, attempt a pull to get latest code (non-blocking if pull fails, e.g. fresh clone)
     if (project.sourceType === 'git' && project.sourceUrl) {
       const projectDir = path.join(config.projectsDir, id);
-      const git = simpleGit(projectDir);
-      await git.pull();
+      try {
+        const git = simpleGit(projectDir);
+        await git.pull();
+      } catch (pullErr: any) {
+        console.warn(`[deploy] git pull notice for project "${project.name}" (${id}):`, pullErr.message);
+      }
     }
 
     // Remove old container if exists
@@ -215,12 +251,15 @@ export async function deployProject(id: string): Promise<Project> {
     ).run(containerId, id);
 
     // Update Caddy config
-    await caddyService.updateCaddy().catch(() => {});
+    await caddyService.updateCaddy().catch((err) => {
+      console.warn('[caddy] failed to update Caddy configuration:', err);
+    });
 
     return getProjectById(id)!;
-  } catch (err) {
+  } catch (err: any) {
     db.prepare("UPDATE projects SET status = 'error', updated_at = datetime('now') WHERE id = ?").run(id);
-    throw err;
+    const msg = err?.message || String(err);
+    throw new AppError(500, `Deployment failed: ${msg}`);
   }
 }
 

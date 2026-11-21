@@ -76,7 +76,7 @@ export default function NewProject() {
         type,
         sourceType,
         sourceUrl: sourceType === 'git' ? sourceUrl.trim() : undefined,
-        branch: sourceType === 'git' ? branch.trim() || 'main' : undefined,
+        branch: sourceType === 'git' ? (branch.trim() || undefined) : undefined,
         envVars: Object.keys(envDict).length > 0 ? envDict : undefined,
       });
 
@@ -88,7 +88,10 @@ export default function NewProject() {
       setStatusMessage('Building and deploying container...');
 
       // Trigger deploy
-      await deployProject(created.id);
+      const deployRes = await deployProject(created.id);
+      if (!deployRes.success) {
+        throw new Error(deployRes.error || 'Failed to deploy project container');
+      }
 
       navigate(`/projects/${created.id}`);
     } catch (err) {

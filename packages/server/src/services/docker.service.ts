@@ -4,7 +4,10 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import tar from 'tar-fs';
 import { config } from '../config.js';
-import type { ContainerStats } from '@zima-host/shared';
+import { AppError } from '../middleware/error.js';
+import { slugify, type ContainerStats } from '@zima-host/shared';
+
+export { slugify };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,16 +18,20 @@ const docker = new Docker({ socketPath: config.docker.socketPath });
  * Ensure the shared Docker network exists.
  */
 export async function ensureNetwork(): Promise<void> {
-  const networks = await docker.listNetworks({
-    filters: { name: [config.docker.network] },
-  });
-  const exists = networks.some((n) => n.Name === config.docker.network);
-  if (!exists) {
-    await docker.createNetwork({
-      Name: config.docker.network,
-      Driver: 'bridge',
+  try {
+    const networks = await docker.listNetworks({
+      filters: { name: [config.docker.network] },
     });
-    console.log(`[docker] created network "${config.docker.network}"`);
+    const exists = networks.some((n) => n.Name === config.docker.network);
+    if (!exists) {
+      await docker.createNetwork({
+        Name: config.docker.network,
+        Driver: 'bridge',
+      });
+      console.log(`[docker] created network "${config.docker.network}"`);
+    }
+  } catch (err: any) {
+    console.warn(`[docker] network "${config.docker.network}" check/creation warning:`, err.message);
   }
 }
 
@@ -41,15 +48,21 @@ export async function buildImage(
   const projectDir = path.join(config.projectsDir, projectId);
 
   const possibleDirs = [
-    path.resolve('docker/templates', projectType),
+    path.join(config.dataDir, 'templates', projectType),
+    path.resolve('/app/docker/templates', projectType),
     path.resolve(process.cwd(), 'docker/templates', projectType),
+    path.resolve('docker/templates', projectType),
     path.resolve(__dirname, '../../../docker/templates', projectType),
     path.resolve(__dirname, '../../../../docker/templates', projectType),
+    path.resolve(__dirname, '../../docker/templates', projectType),
   ];
   const templateDir = possibleDirs.find((d) => fs.existsSync(path.join(d, 'Dockerfile')));
 
   if (!templateDir) {
-    throw new Error(`No Dockerfile template found for project type "${projectType}"`);
+    throw new AppError(
+      500,
+      `No Dockerfile template found for project type "${projectType}". Searched locations: ${possibleDirs.join(', ')}`,
+    );
   }
 
   // Copy template files into project directory (e.g. Dockerfile, nginx.conf)
@@ -58,8 +71,14 @@ export async function buildImage(
     fs.copyFileSync(path.join(templateDir, file), path.join(projectDir, file));
   }
 
-  const imageName = `zima-${projectName}:latest`;
-  const tarStream = tar.pack(projectDir);
+  const slug = slugify(projectName);
+  const imageName = `zima-${slug}:latest`;
+  const tarStream = tar.pack(projectDir, {
+    ignore: (name) => {
+      const base = path.basename(name);
+      return base === '.git' || base === 'node_modules';
+    },
+  });
 
   const stream = await docker.buildImage(tarStream as unknown as NodeJS.ReadableStream, {
     t: imageName,
@@ -67,10 +86,25 @@ export async function buildImage(
 
   // Wait for build to complete
   await new Promise<void>((resolve, reject) => {
-    docker.modem.followProgress(stream, (err: Error | null) => {
-      if (err) reject(err);
-      else resolve();
-    });
+    docker.modem.followProgress(
+      stream,
+      (err: Error | null, output: any[]) => {
+        if (err) {
+          return reject(err);
+        }
+        const errorItem = output?.find((item) => item?.error || item?.errorDetail);
+        if (errorItem) {
+          const detail = errorItem.errorDetail?.message || errorItem.error || 'Docker image build failed';
+          return reject(new Error(detail));
+        }
+        resolve();
+      },
+      (progress: any) => {
+        if (progress?.stream) {
+          process.stdout.write(`[docker build:${slug}] ${progress.stream}`);
+        }
+      },
+    );
   });
 
   return imageName;
@@ -85,13 +119,16 @@ export async function createContainer(
   port: number,
   envVars: Record<string, string> = {},
 ): Promise<string> {
-  const containerName = `zima-${projectName}`;
+  await ensureNetwork();
+
+  const slug = slugify(projectName);
+  const containerName = `zima-${slug}`;
 
   // Remove existing container with the same name if present
   try {
     const existing = docker.getContainer(containerName);
     await existing.stop().catch(() => {});
-    await existing.remove({ force: true });
+    await existing.remove({ force: true }).catch(() => {});
   } catch {
     // Container doesn't exist, that's fine
   }
@@ -99,22 +136,26 @@ export async function createContainer(
   const env = Object.entries(envVars).map(([k, v]) => `${k}=${v}`);
   env.push(`PORT=${port}`);
 
-  const container = await docker.createContainer({
-    Image: imageName,
-    name: containerName,
-    Env: env,
-    ExposedPorts: { [`${port}/tcp`]: {} },
-    HostConfig: {
-      PortBindings: {
-        [`${port}/tcp`]: [{ HostPort: String(port) }],
+  try {
+    const container = await docker.createContainer({
+      Image: imageName,
+      name: containerName,
+      Env: env,
+      ExposedPorts: { [`${port}/tcp`]: {} },
+      HostConfig: {
+        PortBindings: {
+          [`${port}/tcp`]: [{ HostPort: String(port) }],
+        },
+        NetworkMode: config.docker.network,
+        RestartPolicy: { Name: 'unless-stopped' },
       },
-      NetworkMode: config.docker.network,
-      RestartPolicy: { Name: 'unless-stopped' },
-    },
-  });
+    });
 
-  await container.start();
-  return container.id;
+    await container.start();
+    return container.id;
+  } catch (err: any) {
+    throw new AppError(500, `Failed to create/start container "${containerName}": ${err.message}`);
+  }
 }
 
 export async function startContainer(containerId: string): Promise<void> {
