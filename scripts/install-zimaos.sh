@@ -92,7 +92,7 @@ docker compose -f "${PROJECT_DIR}/docker-compose.yml" up -d
 # 8. Check if CasaOS CLI is present for UI registration
 if command -v casaos-cli &> /dev/null; then
     echo -e "📱 Registering Zima Host in ZimaOS Dashboard..."
-    casaos-cli app-management apply zima-host -f "${PROJECT_DIR}/Apps/zima-host/docker-compose.yml" 2>/dev/null || true
+    casaos-cli app-management install -f "${PROJECT_DIR}/Apps/zima-host/docker-compose.yml" 2>/dev/null || casaos-cli app-management apply zima-host -f "${PROJECT_DIR}/Apps/zima-host/docker-compose.yml" 2>/dev/null || true
 fi
 
 # 9. Get Host IP
