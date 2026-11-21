@@ -1,36 +1,82 @@
-version: "3.8"
+name: zima-host
 
 services:
-  caddy:
-    image: caddy:2-alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ~/.zima-host/Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - zima-network
-    restart: unless-stopped
-
   zima-host:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zima-host:latest
+    container_name: zima-host
+    restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ~/.zima-host:/root/.zima-host
+      - ${ZIMA_DATA_DIR:-/DATA/AppData/zima-host/data}:/root/.zima-host
     networks:
       - zima-network
     depends_on:
       - caddy
+    x-casaos:
+      ports:
+        - container: "3000"
+          description:
+            en_us: "Zima Host Dashboard"
+      volumes:
+        - container: "/root/.zima-host"
+          description:
+            en_us: "Project files, database, and configurations"
+        - container: "/var/run/docker.sock"
+          description:
+            en_us: "Docker daemon socket"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: zima-host-caddy
     restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ${ZIMA_DATA_DIR:-/DATA/AppData/zima-host/data}/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - zima-network
+    x-casaos:
+      ports:
+        - container: "80"
+          description:
+            en_us: "HTTP Web Traffic"
+        - container: "443"
+          description:
+            en_us: "HTTPS Encrypted Web Traffic"
 
 networks:
   zima-network:
+    name: zima-network
     driver: bridge
 
 volumes:
   caddy_data:
   caddy_config:
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: zima-host
+  author: Yaroslav Solovev
+  category: Developer
+  description:
+    en_us: "Zero-cost website management panel for ZimaBoard 2. Easily launch, host, and manage static and Node.js websites with automated Caddy SSL, Cloudflare integration, container isolation, live logs, and hardware telemetry."
+  tagline:
+    en_us: "Self-hosted website management panel for ZimaBoard 2"
+  developer: Zima Host
+  icon: "https://raw.githubusercontent.com/IceWhaleTech/CasaOS-AppStore/main/Apps/NginxProxyManager/icon.png"
+  thumbnail: ""
+  title:
+    en_us: "Zima Host"
+  index: /
+  port_map: "3000"
+  scheme: http
