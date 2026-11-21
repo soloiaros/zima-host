@@ -3,9 +3,6 @@ name: zima-host
 services:
   zima-host:
     image: zima-host:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     container_name: zima-host
     restart: unless-stopped
     ports:
