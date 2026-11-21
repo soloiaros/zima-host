@@ -7,8 +7,5 @@
     "declarationMap": false,
     "noEmit": true
   },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../shared" }
-  ]
+  "include": ["src/**/*"]
 }
