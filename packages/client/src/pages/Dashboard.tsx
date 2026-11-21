@@ -6,10 +6,12 @@ import {
   StopCircle,
   Clock,
   Cpu,
-  MemoryStick,
+  Layers,
   HardDrive,
   ArrowRight,
   Plus,
+  Globe,
+  Radio,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -67,15 +69,14 @@ export default function Dashboard() {
           memory: Math.round(stats.memory.percentage),
         },
       ];
-      // Keep last 15 points
-      return next.slice(-15);
+      return next.slice(-20);
     });
   }, [stats]);
 
   const totalProjects = projects.length;
   const runningProjects = projects.filter((p) => p.status === 'running').length;
   const stoppedProjects = projects.filter((p) => p.status === 'stopped').length;
-  const recentProjects = [...projects].slice(0, 5);
+  const recentProjects = [...projects].slice(0, 6);
 
   const getDomainForProject = (projectId: string) => {
     const found = domains.find((d) => d.projectId === projectId);
@@ -83,281 +84,304 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-surface-700/60">
         <div>
-          <h1 className="text-2xl font-bold text-surface-100">Dashboard</h1>
-          <p className="text-sm text-surface-400 mt-1">
-            Overview of your hosted applications and server resources
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight text-surface-100">
+              Dashboard
+            </h1>
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-zima-500/10 text-zima-400 border border-zima-500/20">
+              Overview
+            </span>
+          </div>
+          <p className="text-xs text-surface-400 mt-0.5 tracking-tight">
+            Real-time telemetry and management for your self-hosted websites
           </p>
         </div>
         <Link
           to="/projects/new"
-          className="btn-primary inline-flex items-center gap-2 text-sm"
+          className="btn-primary self-start sm:self-auto"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
           New Project
         </Link>
       </div>
 
-      {/* Stats Cards Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Key Metrics Row */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatsCard
           icon={FolderKanban}
-          label="Total Projects"
-          value={projectsLoading ? '...' : totalProjects}
-          subtext={`${runningProjects} active`}
+          label="Total Websites"
+          value={projectsLoading ? '—' : totalProjects}
+          subtext={`${runningProjects} online`}
           iconColor="text-zima-400"
         />
         <StatsCard
           icon={PlayCircle}
-          label="Running"
-          value={projectsLoading ? '...' : runningProjects}
-          subtext="Healthy containers"
-          iconColor="text-green-400"
+          label="Active Containers"
+          value={projectsLoading ? '—' : runningProjects}
+          subtext="Healthy state"
+          iconColor="text-emerald-400"
         />
         <StatsCard
           icon={StopCircle}
-          label="Stopped"
-          value={projectsLoading ? '...' : stoppedProjects}
-          subtext="Offline or paused"
-          iconColor="text-surface-400"
+          label="Offline / Stopped"
+          value={projectsLoading ? '—' : stoppedProjects}
+          subtext="Inactive"
+          iconColor="text-surface-500"
         />
         <StatsCard
           icon={Clock}
-          label="System Uptime"
-          value={stats ? formatUptime(stats.uptime) : '...'}
-          subtext="Since last boot"
-          iconColor="text-yellow-400"
+          label="ZimaBoard Uptime"
+          value={stats ? formatUptime(stats.uptime) : '—'}
+          subtext="Continuous"
+          iconColor="text-amber-400"
         />
       </div>
 
-      {/* System Resources Section */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="card lg:col-span-1 space-y-5">
-          <h2 className="text-base font-semibold text-surface-100">
-            System Resources
-          </h2>
-
-          <div className="space-y-4">
-            {/* CPU */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-surface-300">
-                  <Cpu className="h-4 w-4 text-zima-400" />
-                  CPU Usage
-                </span>
-                <span className="font-semibold text-surface-200">
-                  {stats ? `${Math.round(stats.cpu.usage)}%` : '...'}
-                </span>
-              </div>
-              <ProgressBar
-                value={stats?.cpu.usage ?? 0}
-                color={stats && stats.cpu.usage > 80 ? 'red' : 'blue'}
-              />
-              <p className="text-xs text-surface-500">
-                {stats?.cpu.cores ?? 1} Cores available
-              </p>
+      {/* Hardware Telemetry & Real-Time Sparkline */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Hardware Meters Card */}
+        <div className="card lg:col-span-1 space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-2 border-b border-surface-700/60">
+              <span className="text-xs font-semibold text-surface-200 tracking-tight flex items-center gap-1.5">
+                <Radio className="h-3.5 w-3.5 text-zima-400" />
+                Live Resources
+              </span>
+              <span className="text-[10px] font-mono text-surface-500">
+                {stats?.cpu.cores ?? 1} CPU Cores
+              </span>
             </div>
 
-            {/* Memory */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-surface-300">
-                  <MemoryStick className="h-4 w-4 text-green-400" />
-                  Memory Usage
-                </span>
-                <span className="font-semibold text-surface-200">
-                  {stats ? `${Math.round(stats.memory.percentage)}%` : '...'}
-                </span>
+            <div className="mt-3.5 space-y-3">
+              {/* CPU */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-surface-400 flex items-center gap-1.5 font-mono text-[11px]">
+                    <Cpu className="h-3 w-3 text-zima-400" /> CPU Load
+                  </span>
+                  <span className="font-mono text-xs text-surface-200 tabular-nums">
+                    {stats ? `${Math.round(stats.cpu.usage)}%` : '—'}
+                  </span>
+                </div>
+                <ProgressBar
+                  value={stats?.cpu.usage ?? 0}
+                  color="auto"
+                  size="xs"
+                />
               </div>
-              <ProgressBar
-                value={stats?.memory.percentage ?? 0}
-                color={stats && stats.memory.percentage > 85 ? 'red' : 'green'}
-              />
-              <p className="text-xs text-surface-500">
-                {stats
-                  ? `${formatBytes(stats.memory.used)} / ${formatBytes(
-                      stats.memory.total,
-                    )}`
-                  : '...'}
-              </p>
-            </div>
 
-            {/* Disk */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-surface-300">
-                  <HardDrive className="h-4 w-4 text-yellow-400" />
-                  Disk Usage
-                </span>
-                <span className="font-semibold text-surface-200">
-                  {stats ? `${Math.round(stats.disk.percentage)}%` : '...'}
-                </span>
+              {/* Memory */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-surface-400 flex items-center gap-1.5 font-mono text-[11px]">
+                    <Layers className="h-3 w-3 text-emerald-400" /> Memory
+                  </span>
+                  <span className="font-mono text-xs text-surface-200 tabular-nums">
+                    {stats ? `${Math.round(stats.memory.percentage)}%` : '—'}
+                  </span>
+                </div>
+                <ProgressBar
+                  value={stats?.memory.percentage ?? 0}
+                  color="auto"
+                  size="xs"
+                />
+                <p className="text-[10px] font-mono text-surface-500 text-right">
+                  {stats
+                    ? `${formatBytes(stats.memory.used)} / ${formatBytes(
+                        stats.memory.total,
+                      )}`
+                    : '—'}
+                </p>
               </div>
-              <ProgressBar
-                value={stats?.disk.percentage ?? 0}
-                color={stats && stats.disk.percentage > 90 ? 'red' : 'yellow'}
-              />
-              <p className="text-xs text-surface-500">
-                {stats
-                  ? `${formatBytes(stats.disk.used)} / ${formatBytes(
-                      stats.disk.total,
-                    )}`
-                  : '...'}
-              </p>
+
+              {/* Disk */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-surface-400 flex items-center gap-1.5 font-mono text-[11px]">
+                    <HardDrive className="h-3 w-3 text-amber-400" /> Storage
+                  </span>
+                  <span className="font-mono text-xs text-surface-200 tabular-nums">
+                    {stats ? `${Math.round(stats.disk.percentage)}%` : '—'}
+                  </span>
+                </div>
+                <ProgressBar
+                  value={stats?.disk.percentage ?? 0}
+                  color="auto"
+                  size="xs"
+                />
+                <p className="text-[10px] font-mono text-surface-500 text-right">
+                  {stats
+                    ? `${formatBytes(stats.disk.used)} / ${formatBytes(
+                        stats.disk.total,
+                      )}`
+                    : '—'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Real-time Sparkline / Area Chart */}
+        {/* Real-time Utilization Graph */}
         <div className="card lg:col-span-2 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between pb-2 border-b border-surface-700/60">
             <div>
-              <h2 className="text-base font-semibold text-surface-100">
-                Resource Activity
-              </h2>
-              <p className="text-xs text-surface-400 mt-0.5">
-                Real-time CPU and Memory utilization trends
+              <span className="text-xs font-semibold text-surface-200 tracking-tight">
+                Activity Stream
+              </span>
+              <p className="text-[11px] text-surface-500 font-mono">
+                Continuous 3-second polling interval
               </p>
             </div>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-3 text-[11px] font-mono">
               <span className="flex items-center gap-1.5 text-surface-300">
-                <span className="h-2.5 w-2.5 rounded-full bg-zima-500" />
-                CPU (%)
+                <span className="h-2 w-2 rounded-full bg-zima-500" />
+                CPU
               </span>
               <span className="flex items-center gap-1.5 text-surface-300">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                Memory (%)
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                RAM
               </span>
             </div>
           </div>
 
-          <div className="h-48 w-full">
-            {history.length > 0 ? (
+          <div className="h-44 w-full pt-3">
+            {history.length > 1 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
                   data={history}
-                  margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
+                  margin={{ top: 5, right: 8, left: -24, bottom: 0 }}
                 >
                   <defs>
                     <linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#338dff" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#338dff" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="memGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis
                     dataKey="time"
-                    stroke="#475569"
-                    fontSize={11}
+                    stroke="#3f3f46"
+                    fontSize={10}
                     tickLine={false}
+                    fontFamily="monospace"
                   />
                   <YAxis
                     domain={[0, 100]}
-                    stroke="#475569"
-                    fontSize={11}
+                    stroke="#3f3f46"
+                    fontSize={10}
                     tickLine={false}
+                    fontFamily="monospace"
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0f172a',
-                      borderColor: '#334155',
-                      borderRadius: '8px',
-                      color: '#f8fafc',
-                      fontSize: '12px',
+                      backgroundColor: '#121215',
+                      borderColor: '#27272a',
+                      borderRadius: '6px',
+                      color: '#f3f4f6',
+                      fontSize: '11px',
+                      fontFamily: 'monospace',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                     }}
                   />
                   <Area
                     type="monotone"
                     dataKey="cpu"
-                    name="CPU"
-                    stroke="#338dff"
-                    strokeWidth={2}
+                    name="CPU (%)"
+                    stroke="#3b82f6"
+                    strokeWidth={1.5}
                     fillOpacity={1}
                     fill="url(#cpuGrad)"
+                    isAnimationActive={false}
                   />
                   <Area
                     type="monotone"
                     dataKey="memory"
-                    name="Memory"
+                    name="RAM (%)"
                     stroke="#10b981"
-                    strokeWidth={2}
+                    strokeWidth={1.5}
                     fillOpacity={1}
                     fill="url(#memGrad)"
+                    isAnimationActive={false}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-surface-500">
-                Collecting real-time metrics...
+              <div className="flex h-full items-center justify-center text-xs font-mono text-surface-500">
+                Sampling system stream...
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Recent Projects */}
-      <div className="space-y-4">
+      {/* Hosted Projects Section */}
+      <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-surface-100">
-            Recent Projects
-          </h2>
+          <span className="text-xs font-semibold uppercase tracking-wider text-surface-400">
+            Deployed Websites
+          </span>
           <Link
             to="/projects"
-            className="inline-flex items-center gap-1 text-sm font-medium text-zima-400 hover:text-zima-300 transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-medium text-zima-400 hover:text-zima-300 transition-colors"
           >
-            View all
-            <ArrowRight className="h-4 w-4" />
+            All projects
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
 
         {recentProjects.length === 0 && !projectsLoading ? (
           <div className="card">
             <EmptyState
-              title="No projects yet"
-              description="Deploy your first website or Node.js application in seconds."
+              title="No websites hosted yet"
+              description="Deploy a static frontend or Node.js backend to get started."
               action={
-                <Link to="/projects/new" className="btn-primary inline-flex text-sm">
-                  Create Project
+                <Link to="/projects/new" className="btn-primary">
+                  Deploy Website
                 </Link>
               }
             />
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {recentProjects.map((project) => {
               const domain = getDomainForProject(project.id);
               return (
                 <Link
                   key={project.id}
                   to={`/projects/${project.id}`}
-                  className="card hover:border-surface-600 transition-colors duration-150 group block"
+                  className="card hover:border-surface-600 transition-all duration-100 group block relative"
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-surface-100 group-hover:text-zima-400 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="font-medium text-sm text-surface-100 group-hover:text-zima-400 transition-colors truncate">
                         {project.name}
                       </h3>
                       {domain ? (
-                        <p className="text-xs text-zima-400 mt-1">{domain}</p>
+                        <p className="text-[11px] font-mono text-zima-400 flex items-center gap-1 mt-0.5 truncate">
+                          <Globe className="h-3 w-3 flex-shrink-0" />
+                          {domain}
+                        </p>
                       ) : (
-                        <p className="text-xs text-surface-500 mt-1">
-                          Port {project.port ?? 'N/A'}
+                        <p className="text-[11px] font-mono text-surface-500 mt-0.5">
+                          Port :{project.port ?? 'N/A'}
                         </p>
                       )}
                     </div>
                     <StatusBadge status={project.status} size="sm" />
                   </div>
-                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-surface-700/50">
+
+                  <div className="mt-4 flex items-center justify-between pt-2.5 border-t border-surface-700/50">
                     <Badge variant={project.type === 'node' ? 'purple' : 'blue'}>
-                      {project.type === 'node' ? 'Node.js' : 'Static Site'}
+                      {project.type === 'node' ? 'Node.js' : 'Static'}
                     </Badge>
-                    <span className="text-xs text-surface-500 capitalize">
+                    <span className="text-[10px] font-mono text-surface-500 uppercase">
                       {project.sourceType}
                     </span>
                   </div>

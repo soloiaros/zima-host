@@ -17,6 +17,9 @@ import {
   AlertCircle,
   ShieldCheck,
   RefreshCw,
+  Copy,
+  Check,
+  Search,
 } from 'lucide-react';
 import {
   getProject,
@@ -64,7 +67,16 @@ export default function ProjectDetail() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [autoScroll, setAutoScroll] = useState(true);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [copiedLogs, setCopiedLogs] = useState(false);
+  const [logSearch, setLogSearch] = useState('');
   const logsEndRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyLogs = () => {
+    const text = logs.map((l) => `[${l.timestamp}] [${l.stream}] ${l.message}`).join('\n');
+    navigator.clipboard.writeText(text);
+    setCopiedLogs(true);
+    setTimeout(() => setCopiedLogs(false), 2000);
+  };
 
   // Settings tab form state
   const [branch, setBranch] = useState('');
@@ -640,57 +652,141 @@ export default function ProjectDetail() {
 
       {/* Logs Tab */}
       {activeTab === 'logs' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <div className="space-y-3">
+          {/* Terminal Console Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={fetchLogs}
                 disabled={logsLoading}
-                className="btn-secondary text-xs inline-flex items-center gap-1.5 py-1"
+                className="btn-secondary"
               >
                 <RefreshCw
-                  className={`h-3.5 w-3.5 ${logsLoading ? 'animate-spin' : ''}`}
+                  className={`h-3 w-3 ${logsLoading ? 'animate-spin' : ''}`}
                 />
                 Refresh
               </button>
-              <span className="text-xs text-surface-500">
-                Showing last {logs.length} entries
+              <button
+                onClick={handleCopyLogs}
+                disabled={logs.length === 0}
+                className="btn-secondary"
+              >
+                {copiedLogs ? (
+                  <>
+                    <Check className="h-3 w-3 text-emerald-400" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3" />
+                    Copy
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setLogs([])}
+                disabled={logs.length === 0}
+                className="btn-ghost text-[11px] font-mono text-surface-500 hover:text-surface-300"
+              >
+                Clear
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Search within logs */}
+              <div className="relative">
+                <Search className="h-3 w-3 text-surface-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Filter logs..."
+                  value={logSearch}
+                  onChange={(e) => setLogSearch(e.target.value)}
+                  className="input pl-7 py-1 text-[11px] w-40"
+                />
+              </div>
+
+              <label className="flex items-center gap-1.5 text-xs text-surface-400 cursor-pointer select-none font-mono">
+                <input
+                  type="checkbox"
+                  checked={autoScroll}
+                  onChange={(e) => setAutoScroll(e.target.checked)}
+                  className="rounded border-surface-700 bg-surface-900 text-zima-600 focus:ring-zima-600 h-3 w-3"
+                />
+                Auto-scroll
+              </label>
+            </div>
+          </div>
+
+          {/* Terminal Window */}
+          <div className="rounded-lg border border-surface-700/80 bg-[#07080a] overflow-hidden shadow-2xl font-mono text-xs">
+            {/* Terminal Window Bar */}
+            <div className="flex items-center justify-between px-3.5 py-2 border-b border-surface-800 bg-surface-900/60 select-none">
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <div className="h-2.5 w-2.5 rounded-full bg-rose-500/80" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+                </div>
+                <span className="text-[11px] font-mono text-surface-400 pl-2">
+                  container://{project.name}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-surface-500">
+                {logs.length} lines logged
               </span>
             </div>
 
-            <label className="flex items-center gap-2 text-xs text-surface-400 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={autoScroll}
-                onChange={(e) => setAutoScroll(e.target.checked)}
-                className="rounded border-surface-700 bg-surface-900 text-zima-600 focus:ring-zima-600 h-3.5 w-3.5"
-              />
-              Auto-scroll
-            </label>
-          </div>
-
-          <div className="bg-surface-950 border border-surface-800 rounded-lg p-4 font-mono text-xs h-[480px] overflow-y-auto space-y-1">
-            {logs.length === 0 ? (
-              <p className="text-surface-500 italic">No logs available for container.</p>
-            ) : (
-              logs.map((log, index) => (
-                <div key={index} className="flex items-start gap-2 leading-relaxed">
-                  <span className="text-surface-600 select-none flex-shrink-0">
-                    {new Date(log.timestamp).toLocaleTimeString()}
-                  </span>
-                  <span
-                    className={
-                      log.stream === 'stderr'
-                        ? 'text-red-400 break-all'
-                        : 'text-surface-300 break-all'
-                    }
-                  >
-                    {log.message}
-                  </span>
+            {/* Terminal Output */}
+            <div className="p-3.5 h-[480px] overflow-y-auto space-y-0.5 text-[11px]">
+              {logs.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-surface-500 italic select-none">
+                  No container logs emitted yet.
                 </div>
-              ))
-            )}
-            <div ref={logsEndRef} />
+              ) : (
+                logs
+                  .filter((l) =>
+                    logSearch
+                      ? l.message.toLowerCase().includes(logSearch.toLowerCase())
+                      : true,
+                  )
+                  .map((log, index) => (
+                    <div
+                      key={index}
+                      className="flex items-start gap-3 leading-relaxed hover:bg-white/[0.02] px-1 rounded transition-colors group"
+                    >
+                      <span className="text-surface-600 select-none w-7 text-right flex-shrink-0 tabular-nums">
+                        {index + 1}
+                      </span>
+                      <span className="text-surface-600 select-none flex-shrink-0 text-[10px]">
+                        {new Date(log.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </span>
+                      <span
+                        className={`text-[9px] font-bold px-1 py-0.2 rounded select-none uppercase flex-shrink-0 ${
+                          log.stream === 'stderr'
+                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            : 'bg-surface-800 text-surface-400'
+                        }`}
+                      >
+                        {log.stream}
+                      </span>
+                      <span
+                        className={
+                          log.stream === 'stderr'
+                            ? 'text-rose-300 break-all'
+                            : 'text-surface-200 break-all'
+                        }
+                      >
+                        {log.message}
+                      </span>
+                    </div>
+                  ))
+              )}
+              <div ref={logsEndRef} />
+            </div>
           </div>
         </div>
       )}

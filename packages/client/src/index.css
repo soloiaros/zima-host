@@ -3,67 +3,93 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    @apply border-surface-700;
+  :root {
+    color-scheme: dark;
+    --scrollbar-track: #0d0d10;
+    --scrollbar-thumb: #27272a;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
   }
 
+  * {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  body {
+    background-color: #08080a;
+    color: #f3f4f6;
+  }
+
+  /* Custom scrollbar for webkit browsers */
   ::-webkit-scrollbar {
-    @apply w-2 h-2;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-surface-900;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-surface-600 rounded-full;
+    background: #27272a;
+    border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-surface-500;
+    background: #3f3f46;
   }
 }
 
 @layer components {
+  /* Crisp, tactile buttons with subtle highlight */
   .btn-primary {
-    @apply px-4 py-2 bg-zima-600 text-white rounded-lg font-medium
-           hover:bg-zima-700 active:bg-zima-800
-           transition-colors duration-150
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 
+           bg-zima-600 text-white rounded-md text-xs font-medium tracking-tight
+           shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)]
+           hover:bg-zima-500 active:scale-[0.98]
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zima-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950
+           transition-all duration-100 disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 bg-surface-700 text-surface-100 rounded-lg font-medium
-           hover:bg-surface-600 active:bg-surface-500
-           transition-colors duration-150
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 
+           bg-surface-800 text-surface-200 border border-surface-700/80 rounded-md text-xs font-medium tracking-tight
+           shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]
+           hover:bg-surface-750 hover:text-surface-100 hover:border-surface-600 active:scale-[0.98]
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950
+           transition-all duration-100 disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .btn-danger {
-    @apply px-4 py-2 bg-red-600 text-white rounded-lg font-medium
-           hover:bg-red-700 active:bg-red-800
-           transition-colors duration-150
-           disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-1.5 px-3 py-1.5 
+           bg-red-500/10 text-red-400 border border-red-500/20 rounded-md text-xs font-medium tracking-tight
+           hover:bg-red-500/20 hover:border-red-500/40 active:scale-[0.98]
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-950
+           transition-all duration-100 disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .btn-ghost {
-    @apply px-4 py-2 text-surface-400 rounded-lg font-medium
-           hover:bg-surface-800 hover:text-surface-100
-           transition-colors duration-150;
+    @apply inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 
+           text-surface-400 rounded-md text-xs font-medium tracking-tight
+           hover:bg-surface-800/80 hover:text-surface-200 active:scale-[0.98]
+           transition-all duration-100;
   }
 
+  /* Refined, low-glare card surface */
   .card {
-    @apply bg-surface-800 rounded-lg border border-surface-700 p-4;
+    @apply bg-surface-850/80 border border-surface-700/60 rounded-lg p-4
+           shadow-surface-subtle transition-colors duration-150;
   }
 
+  /* High-contrast precision input */
   .input {
-    @apply w-full px-3 py-2 bg-surface-900 border border-surface-700 rounded-lg
-           text-surface-100 placeholder-surface-500
-           focus:outline-none focus:ring-2 focus:ring-zima-600 focus:border-transparent
-           transition-all duration-150;
+    @apply w-full px-3 py-1.5 bg-surface-900 border border-surface-700/80 rounded-md
+           text-surface-100 placeholder-surface-500 text-xs font-mono
+           focus:outline-none focus:border-zima-500 focus:ring-1 focus:ring-zima-500
+           transition-colors duration-100;
   }
 
   .label {
-    @apply block text-sm font-medium text-surface-300 mb-1;
+    @apply block text-xs font-medium text-surface-400 mb-1.5 tracking-tight;
   }
 }
