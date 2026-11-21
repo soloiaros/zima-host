@@ -13,7 +13,7 @@ export const config = {
   dbPath: path.join(DATA_DIR, 'zima-host.db'),
 
   docker: {
-    network: 'zima-host',
+    network: process.env.DOCKER_NETWORK || 'zima-network',
     socketPath: process.env.DOCKER_SOCKET || '/var/run/docker.sock',
   },
 

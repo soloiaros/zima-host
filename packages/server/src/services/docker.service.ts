@@ -1,9 +1,13 @@
 import Docker from 'dockerode';
 import path from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import tar from 'tar-fs';
 import { config } from '../config.js';
 import type { ContainerStats } from '@zima-host/shared';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const docker = new Docker({ socketPath: config.docker.socketPath });
 
@@ -35,15 +39,24 @@ export async function buildImage(
   projectType: string,
 ): Promise<string> {
   const projectDir = path.join(config.projectsDir, projectId);
-  const templateDir = path.resolve('docker/templates', projectType);
-  const templateDockerfile = path.join(templateDir, 'Dockerfile');
 
-  if (!fs.existsSync(templateDockerfile)) {
-    throw new Error(`No Dockerfile template for project type "${projectType}"`);
+  const possibleDirs = [
+    path.resolve('docker/templates', projectType),
+    path.resolve(process.cwd(), 'docker/templates', projectType),
+    path.resolve(__dirname, '../../../docker/templates', projectType),
+    path.resolve(__dirname, '../../../../docker/templates', projectType),
+  ];
+  const templateDir = possibleDirs.find((d) => fs.existsSync(path.join(d, 'Dockerfile')));
+
+  if (!templateDir) {
+    throw new Error(`No Dockerfile template found for project type "${projectType}"`);
   }
 
-  // Copy the Dockerfile into the project directory as build context
-  fs.copyFileSync(templateDockerfile, path.join(projectDir, 'Dockerfile'));
+  // Copy template files into project directory (e.g. Dockerfile, nginx.conf)
+  const templateFiles = fs.readdirSync(templateDir);
+  for (const file of templateFiles) {
+    fs.copyFileSync(path.join(templateDir, file), path.join(projectDir, file));
+  }
 
   const imageName = `zima-${projectName}:latest`;
   const tarStream = tar.pack(projectDir);
