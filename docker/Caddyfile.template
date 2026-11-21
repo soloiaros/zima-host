@@ -1,0 +1,13 @@
+# Zima Host - Managed Caddyfile
+# This file is auto-generated. Do not edit manually.
+
+{
+  admin localhost:2019
+}
+
+# Management panel (accessible on port 3000 or via domain)
+:3000 {
+  reverse_proxy zima-host:3000
+}
+
+# Project entries will be appended below by Zima Host
