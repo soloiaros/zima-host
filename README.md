@@ -1,108 +1,135 @@
 # Zima Host
 
-> Self-hosted zero-cost website management platform for ZimaBoard 2
+<table>
+  <tr>
+    <th colspan="2" style="text-align: center;">
+      <img src="Apps/zima-host/icon.png" width="100" alt="Zima Host Icon" /><br />
+      <b>Zima Host</b>
+    </th>
+  </tr>
+  <tr>
+    <td><b>Developer</b></td>
+    <td>Yaroslav Solovev</td>
+  </tr>
+  <tr>
+    <td><b>Platform</b></td>
+    <td>ZimaOS / CasaOS (x86_64 / amd64)</td>
+  </tr>
+  <tr>
+    <td><b>Category</b></td>
+    <td>Self-hosted PaaS / Web Hosting Panel</td>
+  </tr>
+  <tr>
+    <td><b>Core Components</b></td>
+    <td>React, Express, SQLite, Docker, Caddy 2</td>
+  </tr>
+  <tr>
+    <td><b>License</b></td>
+    <td>MIT</td>
+  </tr>
+</table>
 
-A lightweight, beautiful, and self-hosted platform to manage and host all your websites on your ZimaBoard with zero recurring subscription fees. Deploy static sites and Node.js applications with one click, manage custom domains, and monitor resources — no terminal required.
+**Zima Host** is an open-source, zero-cost web hosting management platform designed for the ZimaBoard 2 running ZimaOS. It enables users to deploy, isolate, and route static and Node.js websites from a graphical interface, eliminating recurring cloud hosting fees and manual server configuration.
 
 ---
 
-## Features
+## 1. Overview & Architecture
 
-- 📊 **Dashboard** — Real-time overview of all projects, container states, and hardware metrics (CPU, RAM, Disk).
-- ➕ **One-Click Deployments** — Deploy static sites or Node.js apps from Git repositories or direct uploads.
-- 🌐 **Custom Domains & Auto-SSL** — Automated Caddy reverse proxy provisioning free HTTPS via Let's Encrypt / ZeroSSL.
-- ☁️ **Cloudflare Integration** — Works seamlessly with Cloudflare DNS proxying and Cloudflare Tunnels (no open router ports needed!).
-- 🐳 **Docker Isolation** — Every website runs isolated in its own container on an internal bridge network.
-- 📋 **Live Logs & Controls** — Real-time container log streaming and start/stop/restart/redeploy controls.
-- 🖥️ **ZimaOS / CasaOS Native** — Formatted with `x-casaos` metadata to run directly as a native desktop application in ZimaOS.
+Each project deployed through Zima Host runs in its own isolated Docker container on an internal bridge network (`zima-network`). Incoming web traffic is routed dynamically through a Caddy reverse proxy, which provisions and renews TLS/SSL certificates automatically via Let's Encrypt and ZeroSSL.
 
----
-
-## Native Installation on ZimaOS
-
-### Method 1: Remote One-Line Deploy from Mac (Fastest)
-
-Run the deployment script from your Mac terminal pointing to your ZimaBoard IP:
-
-```bash
-./scripts/deploy.sh <zimaboard-ip> [ssh-user]
-# Example:
-./scripts/deploy.sh 192.168.1.100 root
+```
+Public Internet (Cloudflare DNS / Tunnel)
+                │
+         [ Port 80 / 443 ]
+                ▼
+        ┌──────────────┐
+        │   Caddy 2    │  ◄── Auto-configured via Zima Host API
+        └───────┬──────┘
+                │ Internal network (:3000, :8081, :8082...)
+       ┌────────┴────────┬──────────────────┐
+       ▼                 ▼                  ▼
+┌──────────────┐  ┌──────────────┐   ┌──────────────┐
+│  Zima Host   │  │ Static Site  │   │ Node.js App  │
+│  (Port 3000) │  │ (Nginx Cont) │   │ (Node Cont)  │
+└──────────────┘  └──────────────┘   └──────────────┘
 ```
 
-This will automatically synchronize the repository, build the container image on the ZimaBoard, and register Zima Host in ZimaOS.
-
 ---
 
-### Method 2: ZimaOS Web UI "Custom Install"
+## 2. Installation on ZimaOS
 
-1. Open your **ZimaOS Dashboard** (`http://<zimaboard-ip>`).
-2. Go to **App Store** and click the **Install a customized app** button in the top-right corner.
-3. Click the import button (or open `Apps/zima-host/docker-compose.yml`) and paste the contents of `Apps/zima-host/docker-compose.yml`.
-4. Click **Install**.
-5. Zima Host will appear directly on your ZimaOS home desktop!
+### Prerequisites
+* A ZimaBoard running ZimaOS (or any Linux host with Docker installed).
+* Root or sudo access on the board.
 
----
-
-### Method 3: Direct Shell on ZimaBoard
-
-SSH into your ZimaBoard and run:
+### Step 1: Transfer the project to your ZimaBoard
+Clone the repository into `/DATA/AppData/zima-host/source`:
 
 ```bash
-git clone https://github.com/your-username/zima-host.git /DATA/AppData/zima-host/source
+git clone https://github.com/soloiaros/zima-host.git /DATA/AppData/zima-host/source
 cd /DATA/AppData/zima-host/source
-bash scripts/install-zimaos.sh
 ```
 
----
+*(Alternatively, copy `zima-host.zip` to your board via the ZimaOS Files app and extract it).*
 
-## Cloudflare DNS & Zero-Cost Hosting Setup
+### Step 2: Run the installer
+Execute the setup script. On ZimaOS, root permissions and writable data paths are required:
 
-Since your domains are already configured in Cloudflare, you have two zero-billing ways to route public traffic to your ZimaBoard:
+```bash
+sudo env DOCKER_CONFIG=/DATA/AppData/zima-host/.docker XDG_CONFIG_HOME=/DATA/AppData/zima-host/.config TMPDIR=/tmp bash scripts/install-zimaos.sh
+```
 
-### Option A: Cloudflare DNS (Direct A Record)
-1. In your home router, port forward ports `80` and `443` to your ZimaBoard IP.
-2. In Cloudflare DNS, add an **A Record** (e.g., `mysite.com` or `*.mysite.com`) pointing to your home public IP address, with the Cloudflare Proxy (`Orange Cloud`) enabled.
-3. In **Zima Host UI** (`http://<zimaboard-ip>:3000`), open your project, go to the **Domains** tab, and enter `mysite.com`.
-4. Caddy will automatically configure SSL and route traffic to your project container!
-
-### Option B: Cloudflare Tunnel (Zero Port-Forwarding / Behind CGNAT)
-If your ISP uses CGNAT or you prefer not opening ports on your home router:
-1. In Cloudflare Zero Trust dashboard, create a free **Cloudflare Tunnel**.
-2. Run `cloudflared` on ZimaOS via Docker.
-3. Route your domain hostname (`mysite.com`) in the tunnel settings to `http://localhost:3000` or Caddy on `http://localhost:80`.
-4. Cloudflare terminates SSL and securely tunnels traffic into your ZimaBoard with zero router configuration!
+### Step 3: Access the Management Panel
+Open your browser to:
+```
+http://<zimaboard-ip>:3000
+```
+The Zima Host card will also appear on your ZimaOS home desktop.
 
 ---
 
-## Tech Stack
+## 3. Domain & Cloudflare Configuration
 
-| Component | Technology |
-|---|---|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Recharts, Lucide Icons |
-| Backend | Node.js, Express, TypeScript, WebSocket |
-| Database | SQLite with WAL mode (`better-sqlite3`) |
-| Container Engine | Docker (`dockerode`) |
-| Reverse Proxy | Caddy 2 (automated HTTPS) |
-| OS Platform | ZimaOS / CasaOS |
+Zima Host integrates with domains managed under Cloudflare using two routing modes:
+
+### Mode A: Cloudflare DNS (Direct A Record)
+1. In your router, forward ports `80` and `443` to the ZimaBoard's local IP address.
+2. In Cloudflare DNS, add an **A Record** (e.g. `example.com` or `*.example.com`) pointing to your home public IP with Proxy Status set to **Proxied** (Orange Cloud).
+3. Inside the Zima Host panel, navigate to your project, open the **Domains** tab, and enter your domain name. Caddy will configure the route instantly.
+
+### Mode B: Cloudflare Tunnel (No Port Forwarding Required)
+For connections behind ISP CGNAT or where home router ports cannot be opened:
+1. Create a free **Tunnel** in the Cloudflare Zero Trust dashboard.
+2. Install the `cloudflared` Docker container on your ZimaBoard.
+3. Configure your tunnel public hostname to forward traffic to `http://localhost:3000` (for the panel) or `http://localhost:80` (for Caddy).
 
 ---
 
-## Local Development
+## 4. Features & Components
+
+* **Dashboard**: System telemetry gauges (CPU, memory, storage) and project status cards.
+* **One-Click Deployments**: Git repository cloning and direct folder uploads for both static HTML/SPA and Node.js applications.
+* **Process Isolation**: Every website runs inside its own Docker container with configurable environment variables.
+* **Log Streaming**: Live stdout/stderr log viewer via WebSocket.
+* **Automated Reverse Proxy**: Dynamic generation of Caddyfile entries with atomic zero-downtime reloads via Caddy's admin API.
+
+---
+
+## 5. Development
 
 ```bash
 # Install dependencies
 npm install
 
-# Build shared types
-npm run build -w packages/shared
+# Build all packages
+npm run build
 
-# Start development servers (frontend on :5173, backend on :3000)
+# Start dev server (Client: :5173, Server: :3000)
 npm run dev
 ```
 
 ---
 
-## License
+## 6. License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
