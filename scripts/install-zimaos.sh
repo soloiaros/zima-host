@@ -12,6 +12,13 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Check for root / sudo privileges
+if [ "$EUID" -ne 0 ]; then
+    echo -e "${YELLOW}Notice: Root privileges are required to configure AppData and Docker.${NC}"
+    echo -e "Escalating with sudo...\n"
+    exec sudo -E bash "$0" "$@"
+fi
+
 echo -e "${BLUE}${BOLD}"
 echo "  ______ _                    _    _           _   "
 echo " |___  /(_)                  | |  | |         | |  "
@@ -86,7 +93,7 @@ LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
 
 echo -e "\n${GREEN}${BOLD}🎉 Zima Host successfully installed and running!${NC}\n"
 echo -e "• Dashboard:       ${BOLD}http://${LOCAL_IP}:3000${NC}"
-echo -e "• ZimaOS UI:       ${BOLD}http://${LOCAL_IP}${NC} (Find Zima Host on your desktop)"
+echo -e "• ZimaOS UI:       ${BOLD}http://${LOCAL_IP}:8080${NC} (Find Zima Host on your desktop)"
 echo -e "• App Storage:     ${BLUE}${DATA_ROOT}${NC}"
 echo -e "• Caddyfile:       ${BLUE}${APP_DATA_DIR}/Caddyfile${NC}"
 echo ""
