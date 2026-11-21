@@ -3,6 +3,7 @@ name: zima-host
 services:
   zima-host:
     image: zima-host:latest
+    pull_policy: never
     container_name: zima-host
     restart: unless-stopped
     ports:
