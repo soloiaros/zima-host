@@ -16,9 +16,11 @@ FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app /tmp/src
 
-# Auto-detect web root: dist/, build/, out/, website/, public/, or root
+# Auto-detect web root: dist/client/, dist/, build/, out/, website/, public/, or root
 RUN mkdir -p /usr/share/nginx/html && \
-    if [ -f /tmp/src/dist/index.html ]; then \
+    if [ -f /tmp/src/dist/client/index.html ]; then \
+      cp -r /tmp/src/dist/client/* /usr/share/nginx/html/; \
+    elif [ -f /tmp/src/dist/index.html ]; then \
       cp -r /tmp/src/dist/* /usr/share/nginx/html/; \
     elif [ -f /tmp/src/build/index.html ]; then \
       cp -r /tmp/src/build/* /usr/share/nginx/html/; \
